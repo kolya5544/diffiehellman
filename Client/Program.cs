@@ -1,0 +1,173 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+
+namespace Client
+{
+    class Program
+    {
+        public static byte[] PublicKey = new byte[1024 * 64];
+
+        static void Main(string[] args)
+        {
+            GenerateRandomBytes(1234567, ref PublicKey);
+            Console.WriteLine("---> Diffie-Hellman Server-Chat Client <---");
+            Console.Write("Enter IP to connect: ");
+            string ip = Console.ReadLine();
+            Console.WriteLine("Starting the connection...");
+            byte[] Key = null;
+            NetworkStream ns = null;
+            try
+            {
+                var Algo = HashAlgorithm.Create("SHA256");
+                TcpClient c = new TcpClient(ip, 7887);
+                ns = c.GetStream();
+
+                ns.ReadTimeout = 5000;
+                ns.WriteTimeout = 10000;
+
+                //Generate our own private key.
+                byte[] PrivateKey = new byte[1024 * 64];
+                GenerateRandomBytes(ref PrivateKey);
+
+                //Creating own mixture.
+                byte[] MixSent = new byte[1024 * 64];
+                for (int i = 0; i < MixSent.Length; i++)
+                {
+                    MixSent[i] = (byte)(PublicKey[i] ^ PrivateKey[i]);
+                }
+                //Sending own mixture
+                ns.Write(MixSent, 0, MixSent.Length);
+
+                Thread.Sleep(500);
+                //Reading MIX of Public and Private.
+                byte[] MixReceived = new byte[1024 * 64];
+                MixReceived = Receive(ns);
+
+                //Combining to create sign.
+                byte[] Sign = new byte[1024 * 64];
+                for (int i = 0; i < Sign.Length; i++)
+                {
+                    Sign[i] = (byte)(MixReceived[i] ^ PrivateKey[i]);
+                }
+                
+                //Getting final key.
+                Key = Algo.ComputeHash(Sign);
+                Console.WriteLine("Successful Diffie-Hellman. Signature to compare keys: " + Convert.ToBase64String(Algo.ComputeHash(Key)));
+            } catch
+            {
+                Console.WriteLine("Failed Diffie-Hellman connection."); return;
+            }
+            finally
+            {
+                Console.WriteLine("Press ENTER to enter chat mode.");
+                Console.ReadLine();
+                Console.Clear();
+                try
+                {
+                    StreamReader sr = new StreamReader(ns);
+                    StreamWriter sw = new StreamWriter(ns);
+                    sw.AutoFlush = true;
+                    while (true)
+                    {
+                        Console.Write(">");
+                        string text = Console.ReadLine();
+                        string ToSend = Convert.ToBase64String(Encrypt(Encoding.UTF8.GetBytes(text), Key));
+                        sw.Write(ToSend + "\r\n");
+                        Console.WriteLine("Sent '" + text + "' using protected protocol.");
+                        string Received = sr.ReadLine();
+                        string RCVDecrypted = Encoding.UTF8.GetString(Decrypt(Convert.FromBase64String(Received),Key)).Trim((char)0x00);
+                        Console.WriteLine("Received '" + RCVDecrypted + "' using protected protocol.");
+                        Console.WriteLine("-------------------------------");
+                    }
+                } catch (Exception e)
+                {
+                    Console.WriteLine("Unexpected error!");
+                }
+            }
+        }
+
+        public static byte[] Receive(NetworkStream ns)
+        {
+            while (!ns.DataAvailable) { Thread.Sleep(50); }
+            List<byte> bytes = new List<byte>();
+            while (ns.DataAvailable)
+            {
+                byte[] buffer = new byte[2048];
+                ns.Read(buffer, 0, buffer.Length);
+                bytes.AddRange(buffer);
+            }
+            return bytes.ToArray();
+        }
+
+        private static string HEX(byte[] ba)
+        {
+            StringBuilder hex = new StringBuilder(ba.Length * 2);
+            foreach (byte b in ba)
+                hex.AppendFormat("{0:x2}", b);
+            return hex.ToString();
+        }
+        public static void GenerateRandomBytes(int seed, ref byte[] barray)
+        {
+            Random rng = new Random(seed);
+            for (int i = 0; i < barray.Length; i++)
+            {
+                barray[i] = (byte)rng.Next(0, 256);
+            }
+        }
+        public static void GenerateRandomBytes(ref byte[] barray)
+        {
+            var rng = new RNGCryptoServiceProvider();
+            rng.GetBytes(barray);
+        }
+        private static byte[] Encrypt(byte[] toEncrypt, byte[] key)
+        {
+            List<byte> te = toEncrypt.ToList();
+            while (te.Count % 16 != 0) te.Add(0x00);
+            toEncrypt = te.ToArray();
+            AesCryptoServiceProvider aes = CreateProvider(key);
+            List<byte> K = new List<byte>();
+            K = key.ToList();
+            while (K.Count < 32)
+            {
+                K.Add(0x00);
+            }
+            key = K.ToArray();
+            ICryptoTransform cTransform = aes.CreateEncryptor();
+            byte[] resultArray = cTransform.TransformFinalBlock(toEncrypt, 0, toEncrypt.Length);
+            aes.Clear();
+            return resultArray;
+        }
+        public static AesCryptoServiceProvider CreateProvider(byte[] key)
+        {
+            return new AesCryptoServiceProvider
+            {
+                KeySize = 256,
+                BlockSize = 128,
+                Key = key,
+                Padding = PaddingMode.None,
+                Mode = CipherMode.ECB
+            };
+        }
+        private static byte[] Decrypt(byte[] toDecrypt, byte[] key)
+        {
+            AesCryptoServiceProvider aes = CreateProvider(key);
+            List<byte> K = new List<byte>();
+            K = key.ToList();
+            while (K.Count < 32)
+            {
+                K.Add(0x00);
+            }
+            key = K.ToArray();
+            ICryptoTransform cTransform = aes.CreateDecryptor();
+            byte[] resultArray = cTransform.TransformFinalBlock(toDecrypt, 0, toDecrypt.Length);
+            aes.Clear();
+            return resultArray;
+        }
+    }
+}
