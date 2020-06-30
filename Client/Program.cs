@@ -11,7 +11,7 @@ namespace Client
 {
     class Program
     {
-        public static byte[] PublicKey = new byte[1024 * 64];
+        public static byte[] PublicKey = new byte[1024 * 1];
 
         static void Main(string[] args)
         {
@@ -32,11 +32,11 @@ namespace Client
                 ns.WriteTimeout = 10000;
 
                 //Generate our own private key.
-                byte[] PrivateKey = new byte[1024 * 64];
+                byte[] PrivateKey = new byte[1024 * 1];
                 GenerateRandomBytes(ref PrivateKey);
 
                 //Creating own mixture.
-                byte[] MixSent = new byte[1024 * 64];
+                byte[] MixSent = new byte[1024 * 1];
                 for (int i = 0; i < MixSent.Length; i++)
                 {
                     MixSent[i] = (byte)(PublicKey[i] ^ PrivateKey[i]);
@@ -44,13 +44,12 @@ namespace Client
                 //Sending own mixture
                 ns.Write(MixSent, 0, MixSent.Length);
 
-                Thread.Sleep(500);
                 //Reading MIX of Public and Private.
-                byte[] MixReceived = new byte[1024 * 64];
+                byte[] MixReceived = new byte[1024 * 1];
                 MixReceived = Receive(ns);
 
                 //Combining to create sign.
-                byte[] Sign = new byte[1024 * 64];
+                byte[] Sign = new byte[1024 * 1];
                 for (int i = 0; i < Sign.Length; i++)
                 {
                     Sign[i] = (byte)(MixReceived[i] ^ PrivateKey[i]);
@@ -58,7 +57,7 @@ namespace Client
                 
                 //Getting final key.
                 Key = Algo.ComputeHash(Sign);
-                Console.WriteLine("Successful Diffie-Hellman. Signature to compare keys: " + Convert.ToBase64String(Algo.ComputeHash(Key)));
+                Console.WriteLine("Successful Diffie-Hellman.");
             } catch
             {
                 Console.WriteLine("Failed Diffie-Hellman connection."); return;
@@ -94,13 +93,20 @@ namespace Client
 
         public static byte[] Receive(NetworkStream ns)
         {
-            while (!ns.DataAvailable) { Thread.Sleep(50); }
+            while (!ns.DataAvailable) { Thread.Sleep(200); }
             List<byte> bytes = new List<byte>();
-            while (ns.DataAvailable)
+            int endFactor = 0;
+            while (endFactor < 2 * 10) //2 seconds
             {
-                byte[] buffer = new byte[2048];
-                ns.Read(buffer, 0, buffer.Length);
-                bytes.AddRange(buffer);
+                while (ns.DataAvailable)
+                {
+                    byte[] buffer = new byte[1024];
+                    ns.Read(buffer, 0, buffer.Length);
+                    bytes.AddRange(buffer);
+                    endFactor = 0;
+                }
+                Thread.Sleep(100);
+                endFactor++;
             }
             return bytes.ToArray();
         }

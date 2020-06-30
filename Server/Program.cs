@@ -13,7 +13,7 @@ namespace DiffieHellman
 {
     class Program
     {
-        public static byte[] PublicKey = new byte[1024 * 8];
+        public static byte[] PublicKey = new byte[1024 * 1];
         public static void Log(string t)
         {
             Console.WriteLine("["+DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss")+"] "+t);
@@ -42,7 +42,7 @@ namespace DiffieHellman
                     string hostname = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
                     Log("Got " + hostname + " connected!");
                     //Generate our own private key.
-                    byte[] PrivateKey = new byte[1024 * 64];
+                    byte[] PrivateKey = new byte[1024 * 1];
                     GenerateRandomBytes(ref PrivateKey);
                     byte[] MixReceived = null;
                     byte[] MixSent = null;
@@ -50,10 +50,10 @@ namespace DiffieHellman
                     try
                     {
                         //Reading MIX of Public and Private.
-                        MixReceived = new byte[1024 * 8];
+                        MixReceived = new byte[1024 * 1];
                         MixReceived = Receive(ns);
                         //Preparing own mixture.
-                        MixSent = new byte[1024 * 8];
+                        MixSent = new byte[1024 * 1];
                         for (int i = 0; i < MixSent.Length; i++)
                         {
                             MixSent[i] = (byte)(PublicKey[i] ^ PrivateKey[i]);
@@ -62,7 +62,7 @@ namespace DiffieHellman
                         ns.Write(MixSent, 0, MixSent.Length);
 
                         //Combining to create sign.
-                        byte[] Sign = new byte[1024 * 8];
+                        byte[] Sign = new byte[1024 * 1];
                         for (int i = 0; i < Sign.Length; i++)
                         {
                             Sign[i] = (byte)(MixReceived[i] ^ PrivateKey[i]);
@@ -116,7 +116,7 @@ namespace DiffieHellman
             {
                 while (ns.DataAvailable)
                 {
-                    byte[] buffer = new byte[2048];
+                    byte[] buffer = new byte[1024];
                     ns.Read(buffer, 0, buffer.Length);
                     bytes.AddRange(buffer);
                     endFactor = 0;
