@@ -11,11 +11,7 @@ namespace Client
 {
     class Program
     {
-<<<<<<< HEAD
-        public static byte[] PublicKey = new byte[1024 * 8];
-=======
         public static byte[] PublicKey = new byte[1024 * 1];
->>>>>>> 5c21123cb55592eb91d63083d0f573f17a0b2238
 
         static void Main(string[] args)
         {
@@ -36,19 +32,11 @@ namespace Client
                 ns.WriteTimeout = 10000;
 
                 //Generate our own private key.
-<<<<<<< HEAD
-                byte[] PrivateKey = new byte[1024 * 8];
-                GenerateRandomBytes(ref PrivateKey);
-
-                //Creating own mixture.
-                byte[] MixSent = new byte[1024 * 8];
-=======
                 byte[] PrivateKey = new byte[1024 * 1];
                 GenerateRandomBytes(ref PrivateKey);
 
                 //Creating own mixture.
                 byte[] MixSent = new byte[1024 * 1];
->>>>>>> 5c21123cb55592eb91d63083d0f573f17a0b2238
                 for (int i = 0; i < MixSent.Length; i++)
                 {
                     MixSent[i] = (byte)(PublicKey[i] ^ PrivateKey[i]);
@@ -57,19 +45,12 @@ namespace Client
                 ns.Write(MixSent, 0, MixSent.Length);
 
                 //Reading MIX of Public and Private.
-<<<<<<< HEAD
-                byte[] MixReceived = new byte[1024 * 8];
-                MixReceived = Receive(ns);
-
-                //Combining to create sign.
-                byte[] Sign = new byte[1024 * 8];
-=======
                 byte[] MixReceived = new byte[1024 * 1];
                 MixReceived = Receive(ns);
 
                 //Combining to create sign.
                 byte[] Sign = new byte[1024 * 1];
->>>>>>> 5c21123cb55592eb91d63083d0f573f17a0b2238
+
                 for (int i = 0; i < Sign.Length; i++)
                 {
                     Sign[i] = (byte)(MixReceived[i] ^ PrivateKey[i]);
@@ -120,11 +101,7 @@ namespace Client
             {
                 while (ns.DataAvailable)
                 {
-<<<<<<< HEAD
-                    byte[] buffer = new byte[2048];
-=======
                     byte[] buffer = new byte[1024];
->>>>>>> 5c21123cb55592eb91d63083d0f573f17a0b2238
                     ns.Read(buffer, 0, buffer.Length);
                     bytes.AddRange(buffer);
                     endFactor = 0;
